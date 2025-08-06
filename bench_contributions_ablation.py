@@ -34,7 +34,7 @@ def main():
 
     num_spin_up = 3 # How many times we run the calculator on each molecule before evaluating to get spin-up times (compiling etc.) out of the way.
     num_repeat = 10 # how many times we evaluate the timing on each molecule.
-    size_thresh = 1000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
+    size_thresh = 10000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
 
     # list of (sensitivites, features) combinations that we want to test out.
     # nu_and_b_list = [(20,128), (20, 200), (20,256), (20,300), (20,400), (20,512), (40,128), (40,200), (40,256), (40,300)]

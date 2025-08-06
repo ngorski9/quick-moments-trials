@@ -35,7 +35,7 @@ def main():
     # NOTE: for MACE-OFF the number for spinning up needs to be a bit higher than for HIP-HOP-NN (5 should be ok)
     num_spin_up = 5 # How many times we run the calculator on each molecule before evaluating to get spin-up times (compiling etc.) out of the way.
     num_repeat = 10 # how many times we evaluate the timing on each molecule.
-    size_thresh = 1000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
+    size_thresh = 10000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
 
     out_file = "../results/time_mace.csv" # where should we write the results
     data_folder = "../bench_data" # folder containing the molecules that we are testing (in .pdb format)
