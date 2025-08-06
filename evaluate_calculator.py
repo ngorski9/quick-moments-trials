@@ -43,16 +43,17 @@ if __name__ == "__main__":
     # the data files are '../testData/mace-test-data-Z.npy" etc.
 
     # The categories are identified by a number (in a numpy array)
-    # The names of the categories should be stored in (prefix)-Category-Names.txt
-    prefix = "../testData/mace-test-data"
-    species = np.load(f"{prefix}-Z.npy")
-    location = np.load(f"{prefix}-R.npy")
-    energy = np.load(f"{prefix}-T.npy")
-    forces = np.load(f"{prefix}-F.npy")
-    categories = np.load(f"{prefix}-C.npy")
-    num_categories = np.max(categories)+1
+    # The names of the categories should be stored in (data_prefix)-Category-Names.txt
+    data_prefix = "../testData/mace-test-data"
 
-    # Everything else does not correspond to parameters.
+    # END OF PARAMETERS #
+
+    species = np.load(f"{data_prefix}-Z.npy")
+    location = np.load(f"{data_prefix}-R.npy")
+    energy = np.load(f"{data_prefix}-T.npy")
+    forces = np.load(f"{data_prefix}-F.npy")
+    categories = np.load(f"{data_prefix}-C.npy")
+    num_categories = np.max(categories)+1
 
     # Load in the calculator:
     if calc_name in ["small", "medium", "large"]:
@@ -111,7 +112,7 @@ if __name__ == "__main__":
 
     # Load in the category names for evaluation.
     category_names = []
-    category_names_file = open(f"{prefix}-Category-Names.txt", "r")
+    category_names_file = open(f"{data_prefix}-Category-Names.txt", "r")
     for name in category_names_file:
         category_names.append(name.strip())
 

@@ -18,6 +18,9 @@ from ase import units
 
 import os
 
+# This file evaluates HIP-HOP-NN evaluation times (per atom) of different model sizes on a chosen molecule benchmark.
+# Simply set data_folder equal to a file containing the .pdb files to benchmark on.
+
 # Uncomment the line below in order to print out the autotuning results (can be nice for knowing how far into autotuning you are)
 # os.environ['TRITON_PRINT_AUTOTUNING'] = '1'
 
@@ -31,7 +34,7 @@ def main():
 
     num_spin_up = 3 # How many times we run the calculator on each molecule before evaluating to get spin-up times (compiling etc.) out of the way.
     num_repeat = 10 # how many times we evaluate the timing on each molecule.
-    size_thresh = 10000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
+    size_thresh = 1000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
 
     # list of (sensitivites, features) combinations that we want to test out.
     # nu_and_b_list = [(20,128), (20, 200), (20,256), (20,300), (20,400), (20,512), (40,128), (40,200), (40,256), (40,300)]
@@ -42,6 +45,8 @@ def main():
 
     suppress_model_creation_prints = True # Whether we want to suppress the print statements from creating models that say things like "determined inputs" etc.
     warnings.filterwarnings("ignore") # uncomment this line in order to ignore warnings that are coming from HIP-HOP-NN (the main warning that gets printed out is saying that it is in a beta stage)
+
+    # END OF PARAMETERS #
 
     stdout = sys.stdout
 
@@ -114,8 +119,10 @@ def main():
                         torch.cuda.synchronize()
                         t2 = time.time()
 
-                        times[ (x, *config) ] = t2-t1
-                        times_for_this_config.append(t2-t1)
+                        t_peratom = (t2-t1) / len(m[1])
+
+                        times[ (x, *config) ] = t_peratom
+                        times_for_this_config.append( t_peratom )
 
                     med_time = statistics.median(times_for_this_config)
                     print(f"{m[0]} ({len(m[1])}) [{config}]: {med_time}                                          ")
