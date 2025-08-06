@@ -1,17 +1,3 @@
-"""
-Example script for training HIP-NN directly from the ANI1x_datasets h5 file.
-
-This script was designed for an external dataset available at
-https://doi.org/10.6084/m9.figshare.c.4712477
-
-For info on the dataset, see the following publication:
-Smith, J.S., Zubatyuk, R., Nebgen, B. et al.
-The ANI-1ccx and ANI-1x data sets, coupled-cluster and density functional
-theory properties for molecules. Sci Data 7, 134 (2020).
-https://doi.org/10.1038/s41597-020-0473-z
-
-"""
-
 import os
 import ase
 import time
