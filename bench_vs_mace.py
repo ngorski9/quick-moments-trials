@@ -37,8 +37,8 @@ def main():
     num_repeat = 10 # how many times we evaluate the timing on each molecule.
     size_thresh = 10000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
 
-    out_file = "../results/time_mace.csv" # where should we write the results
-    data_folder = "../bench_data" # folder containing the molecules that we are testing (in .pdb format)
+    out_file = "../time_mace.csv" # where should we write the results.
+    data_folder = "../data/large_molecule_pdb" # folder containing the molecules that we are testing (in .pdb format)
 
     # calculator names: gt: HIP-HOP-NN PYPI implementation. optimized: HIP-HOP-NN optimized implementation.
     #                   small: MACE-OFF small. medium: MACE-OFF medium. large: MACE-OFF large.
@@ -93,7 +93,19 @@ def main():
 
             for c in calcs:
 
+                if(c[1], m) in exclude_evaluation:
+                    continue
+
                 calc_times = [] # used only for printing.
+
+                # skip excluded evaluations.
+                skip_this = False
+                for calc, mol in exclude_evaluation:
+                    if calc == c[1] and mol in m[0]:
+                        skip_this = True
+                
+                if skip_this:
+                    continue
 
                 m[1].calc = c[0]
 
@@ -106,7 +118,7 @@ def main():
 
                 # Time the calculator evaluation
                 for x in range(num_repeat):
-                    print(f"{m[0]} ({len(m[1])}) [{c[1]}]: {x+1} / {num_repeat}",end="\r")
+                    print(f"{m[0]} ({len(m[1])}) [{c[1]}]: {x+1} / {num_repeat}                                                     ",end="\r")
 
                     m[1].rattle(1e-6)
 

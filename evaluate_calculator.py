@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # What file should we store the trial's results to. If the file already exists, it will
     # append the results as another row of the file. Otherwise, it will write the header and data.
-    out_file = "results.csv"
+    out_file = "../results.csv"
 
     # The data should all be formatted using the npy format for hippynn 
     # (see the documentation) in one folder. The prefix should specify
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # The categories are identified by a number (in a numpy array)
     # The names of the categories should be stored in (data_prefix)-Category-Names.txt
-    data_prefix = "../testData/mace-test-data"
+    data_prefix = "../data/mace_test_data/mace"
 
     # END OF PARAMETERS #
 
