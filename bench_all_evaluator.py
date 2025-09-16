@@ -4,6 +4,8 @@ import time
 import statistics
 import torch
 import csv
+import warnings
+import sys
 
 from model_maker import make_model
 
@@ -20,55 +22,63 @@ import os
 import numpy as np
 
 
-# THIS SCRIPT IS CURRENTLY UNDERGOING REVISION #
-# DO NOT USE THIS FOR NOW #
-
-
 os.environ['TRITON_PRINT_AUTOTUNING'] = '1'
 
 def main():
-    out_file = "./results/time_all_alice.csv"
-    data_folder = "bench_data_alice"
+    # I find it easier to set parameters as variables than to pass them in as command line arguments.
 
-    outf = open(out_file, "a")
-    writer = csv.writer(outf)
-    writer.writerow(["l_max", "n_max", "nu", "b", "molecule", "run", "time default", "time polys", "time grad fused", "time polys grad fused", "time env+grads fused", "time polys env+grads fused"])
-
+    # l_max and n_max are as they are in HopInvariantsLayer.py
     l_max=3
     n_max=4
 
-    num_repeat = 100
-    num_compile = 1
+    num_spin_up = 3 # How many times we run the calculator on each molecule before evaluating to get spin-up times (compiling etc.) out of the way.
+    num_repeat = 10 # how many times we evaluate the timing on each molecule.
+    size_thresh = 10000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
 
-    for nu in [20]:#[20,40]:
-        for b in [128]:#[128,200,256,300,400,512]:
+    # list of (sensitivites, features) combinations that we want to test out.
+    # nu_and_b_list = [(20,128), (20, 200), (20,256), (20,300), (20,400), (20,512), (40,128), (40,200), (40,256), (40,300)]
+    nu_and_b_list = [(20,128), (20,200)]
 
-            model, _ = make_model(nu, b, l_max, n_max, True, False, False)
-            model = model.to('cuda')
-            weights = model.state_dict()
+    out_file = "../results/time_all_evaluator.csv" # where should we write the results
+    data_folder = "../data/large_molecule_npz" # folder containing the molecules that we are testing (in .pdb format)
 
-            for f in os.listdir(data_folder):
-                # outf2 = open("debug.txt", "a")
-                # outf2.write(str(t2-t1) + "\n")
-                # outf2.close()
+    suppress_model_creation_prints = False # Whether we want to suppress the print statements from creating models that say things like "determined inputs" etc.
+    warnings.filterwarnings("ignore") # uncomment this line in order to ignore warnings that are coming from HIP-HOP-NN (the main warning that gets printed out is saying that it is in a beta stage)
 
-                if "testosterone" not in f:
-                    continue
-                if "stmv" in f:
-                    continue
-                if not os.path.isfile(f"{data_folder}/{f}"):
-                    continue
+    # END OF PARAMETERS #
 
-                npz = np.load(f"{data_folder}/{f}")
-                arr_dict_input = {}
-                for k in npz:
-                    print(k)
-                    print(npz[k].shape)
-                    if npz[k].dtype == np.float64:
-                        arr_dict_input[k] = npz[k].astype(np.float32)
-                    else:
-                        arr_dict_input[k] = npz[k]
+    stdout = sys.stdout
 
+    # open the results file and write the header
+    outf = open(out_file, "a")
+    writer = csv.writer(outf)
+    writer.writerow(["l_max", "n_max", "nu", "b", "molecule", "time default", "time polys", "time grad fused", "time polys grad fused", "time env+grads fused", "time polys env+grads fused"])
+
+    # iterate over different model sizes
+    for nu,b in nu_and_b_list:
+
+        # iterate over different molecules in the data folder
+        for f in os.listdir(data_folder):
+
+            if not os.path.isfile(f"{data_folder}/{f}"):
+                continue
+
+            # Load in the numpy arrays needed for the evaluator, and 
+            print(f"{data_folder}/{f}")
+            npz = np.load(f"{data_folder}/{f}")
+            arr_dict_input = {}
+            for k in npz:
+                if npz[k].dtype == np.float64:
+                    arr_dict_input[k] = npz[k].astype(np.float32)
+                else:
+                    arr_dict_input[k] = npz[k]
+
+            # get the number of atoms in the molecule and check that it is below our current size threshold.
+            size = arr_dict_input['atomic_numbers'].shape[1]
+            if size_thresh == -1 or size < size_thresh:
+                times = {} # stores all of the times that we measure
+
+                # set up the db_info needed for the evaluator
                 db_info = {'inputs': ['R', 'Z'], 'targets': ['F', 'T', 'Z']}
 
                 db = hippynn.databases.Database(
@@ -85,61 +95,57 @@ def main():
                 db.split_the_rest("test")
 
                 split_arrdict = db.splits['test']
-                split_name = 'test'
 
-                models = {}
+                # Ablation testing:
+                # Each tuple specifies which of my optimizations are implemented comapred to the default.
+                # The first entry is set to True to use polynomial invariants, and False to use default inariants.
+                # The second entry is set to True to use the tensor message passing implementation for the forward pass, and False otherwise.
+                # The third entry is set to True to use the tensor message passing implementation for the gradient computation, and False otherwise.
 
-                for x in range(num_repeat):
+                # Throughout these trials, we run m[1].rattle(1e-6). This slightly perturbs the molecules with a standard deviation of 1e-6.
+                # In doing so, the molecules are slightly shifted, which means that the results of the calculator will not be cached. On the other
+                # hand, because the perturbation is so small, the graph will not need to be rebuilt. This allows us to actually re-run the forward pass
+                # (just without the graph being rebuilt).
 
-                    config_times = {}
+                for config in [(False,False,False),(True,False,False),(False,False,True),(True,False,True),(False,True,True),(True,True,True)]:
+                    times_for_this_config = []
 
-                    for config in [(True,False,False)]:#[(False,False,False)],(True,False,False),(False,False,True),(True,False,True),(False,True,True),(True,True,True)]:
-                        print(config)
-                        model, _ = make_model(nu, b, l_max, n_max, *config)
-                        # weights2 = model.state_dict()
-                        # for k in weights:
-                        #     if k in weights2:
-                        #         weights2[k] = weights[k]
+                    if suppress_model_creation_prints:
+                        sys.stdout = open(os.devnull, "w")
+                    model, _ = make_model(nu, b, l_max, n_max, *config)
+                    sys.stdout = stdout
 
-                        model.load_state_dict(weights)
+                    predictor = hippynn.graphs.Predictor.from_graph(model,model_device='cuda')
 
-                        predictor = hippynn.graphs.Predictor.from_graph(model,model_device='cuda')
-                        predictor = hippynn.graphs.Predictor(predictor.inputs,predictor.outputs[:2],model_device=hippynn.tools.device_fallback())
+                    input_names = [x.db_name for x in predictor.graph.input_nodes]
+                    dict_inputs = {k: split_arrdict[k] for k in input_names}
 
-                        input_names = [x.db_name for x in predictor.graph.input_nodes]
-                        dict_inputs = {k: split_arrdict[k] for k in input_names}
-
-                        times = {}
-
-                        # compile before timing (if necessary)
+                    # spin-up timing (including compilation)
+                    for x in range(num_spin_up):
                         predictor(**dict_inputs, batch_size=1)
 
-                        # run the real evalaution
+                    # run the real evaluation
+                    for x in range(num_repeat):
                         torch.cuda.synchronize()
                         t1 = time.time()
                         predictor(**dict_inputs, batch_size=1)
                         torch.cuda.synchronize()
                         t2 = time.time()
 
-                    config_times[config] = t2-t1
-                    print(t2-t1)
-                    # outf2 = open("debug.txt", "a")
-                    # outf2.write(str(t2-t1) + "\n")
-                    # outf2.close()
-                
-                    # writer.writerow([ l_max, n_max, nu, b, f, x, config_times[(False,False,False)], config_times[(True,False,False)], config_times[(False,False,True)], config_times[(True,False,True)], config_times[(False,True,True)], config_times[(True,True,True)] ] )
-                    outf.flush()
+                        times[(x,*config)] = t2-t1
+                        times_for_this_config.append(t2-t1)
+                    
+                    med_time = statistics.median(times_for_this_config)
+                    print(f"{f} ({size}) [{config}]: {med_time}                                          ")
 
+                # write results of the current trials to the file.
+                for x in range(num_repeat):
+                    writer.writerow([ l_max, n_max, nu, b, f, times[(x,False,False,False)], times[(x,True,False,False)], times[(x,False,False,True)], times[(x,True,False,True)], times[(x,False,True,True)], times[(x,True,True,True)]] )
 
+                outf.flush()
 
 
 
 
 if __name__ == "__main__":
     main()
-
-# alanine_dipeptide.pdb (22): 0.0011365305293690074                                          
-# chignolin.pdb (166): 0.0001635364739291639                                          
-# dhfr.pdb (2489): 8.887466823015409e-05                                          
-# factorIX.pdb (5807): 8.627240128580378e-05                                          
-# testosterone.pdb (49): 0.0005140085609591737 

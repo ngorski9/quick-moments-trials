@@ -38,10 +38,10 @@ def main():
 
     # list of (sensitivites, features) combinations that we want to test out.
     # nu_and_b_list = [(20,128), (20, 200), (20,256), (20,300), (20,400), (20,512), (40,128), (40,200), (40,256), (40,300)]
-    nu_and_b_list = [(20,128), (20,200)]
+    nu_and_b_list = [(20,128)]
 
     out_file = "../results/time_all.csv" # where should we write the results
-    data_folder = "../bench_data" # folder containing the molecules that we are testing (in .pdb format)
+    data_folder = "../data/large_molecule_pdb" # folder containing the molecules that we are testing (in .pdb format)
 
     suppress_model_creation_prints = True # Whether we want to suppress the print statements from creating models that say things like "determined inputs" etc.
     warnings.filterwarnings("ignore") # uncomment this line in order to ignore warnings that are coming from HIP-HOP-NN (the main warning that gets printed out is saying that it is in a beta stage)
@@ -85,7 +85,6 @@ def main():
                 # hand, because the perturbation is so small, the graph will not need to be rebuilt. This allows us to actually re-run the forward pass
                 # (just without the graph being rebuilt).
                 for config in [(False,False,False), (True,False,False), (False,False,True), (True,False,True), (False,True,True), (True,True,True)]:
-
                     times_for_this_config = [] # only used for printing to console.
 
                     # Create the model, obtain the calculator, and set it as the molecule's calculator.

@@ -18,7 +18,7 @@ def build_nodes(network_params, atomization_consistent):
     positions = inputs.PositionsNode(db_name="R")
 
     network = networks.HipHopnn("hipnn_model", (species, positions), module_kwargs=network_params)
-        
+
     if not atomization_consistent:
         henergy = targets.HEnergyNode("HEnergy", network)
     else:
@@ -81,14 +81,14 @@ def make_model(nu, b, l_max, n_max, invars_poly, env_tensor, env_tensor_gradient
         settings.USE_POLYNOMIAL_INVARIANTS = False
 
     if env_tensor_gradient:
-        settings.USE_ENV_TENSOR_GRADIENT = True
+        settings.USE_TENSOR_MESSAGE_PASSING = True
     else:
-        settings.USE_ENV_TENSOR_GRADIENT = False
+        settings.USE_TENSOR_MESSAGE_PASSING = False
 
     if env_tensor:
-        settings.USE_ENV_TENSOR = True
+        settings.TENSOR_MESSAGE_PASSING_GRAD_ONLY = False
     else:
-        settings.USE_ENV_TENSOR = False
+        settings.TENSOR_MESSAGE_PASSING_GRAD_ONLY = True
 
     network_parameters = {
         "possible_species": [0,1,6,7,8,9,15,16,17,35,53],
