@@ -6,6 +6,7 @@ import csv
 import statistics
 import sys
 import warnings
+import argparse
 
 from model_maker import make_model
 
@@ -26,25 +27,59 @@ import os
 
 def main():
 
-    # I find it easier to set parameters as variables than to pass them in as command line arguments.
-
-    # l_max and n_max are as they are in HopInvariantsLayer.py
-    l_max=3
-    n_max=4
-
-    num_spin_up = 3 # How many times we run the calculator on each molecule before evaluating to get spin-up times (compiling etc.) out of the way.
-    num_repeat = 10 # how many times we evaluate the timing on each molecule.
-    size_thresh = 10000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
-
     # list of (sensitivites, features) combinations that we want to test out.
     # nu_and_b_list = [(20,128), (20, 200), (20,256), (20,300), (20,400), (20,512), (40,128), (40,200), (40,256), (40,300)]
     nu_and_b_list = [(20,128)]
 
-    out_file = "../results/time_all.csv" # where should we write the results
-    data_folder = "../data/large_molecule_pdb" # folder containing the molecules that we are testing (in .pdb format)
+    if len(sys.argv) > 1:
 
-    suppress_model_creation_prints = True # Whether we want to suppress the print statements from creating models that say things like "determined inputs" etc.
-    warnings.filterwarnings("ignore") # uncomment this line in order to ignore warnings that are coming from HIP-HOP-NN (the main warning that gets printed out is saying that it is in a beta stage)
+        # I find it easier to set parameters as variables than to pass them in as command line arguments.
+
+        # l_max and n_max are as they are in HopInvariantsLayer.py
+        l_max=3
+        n_max=4
+
+        num_spin_up = 3 # How many times we run the calculator on each molecule before evaluating to get spin-up times (compiling etc.) out of the way.
+        num_repeat = 10 # how many times we evaluate the timing on each molecule.
+        size_thresh = 10000 # only time molecules that have less atoms than this threshold. Set this equal to -1 to time all molecules in the data folder.
+
+        out_file = "../results/time_all.csv" # where should we write the results
+        data_folder = "../data/large_molecule_pdb" # folder containing the molecules that we are testing (in .pdb format)
+
+        suppress_model_creation_prints = False # Whether we want to suppress the print statements from creating models that say things like "determined inputs" etc.
+        warnings.filterwarnings("ignore") # uncomment this line in order to ignore warnings that are coming from HIP-HOP-NN (the main warning that gets printed out is saying that it is in a beta stage)
+    
+    else:
+        parser = argparse.ArgumentParser(prog="HIP-HOP-NN ablation timing with ASE calculator")
+
+        parser.add_argument("-l_max", help="The maximum tensor order used in invariants", type=int, default=3)
+        parser.add_argument("-n_max", help="The maximum number of tensors used in an invariant", type=int, default=4)
+
+        parser.add_argument("-n_spinup", help="How many times do you spin up each evaluator before it runs.", type=int, default=3)
+        parser.add_argument("-n_repeat", help="How many times do you time each molecule.")
+        parser.add_argument("-thresh", help="Only benchmark on molecules with less atoms than this", type=float, default=float('inf'))
+
+        parser.add_argument("-csv", help="The location of the output csv file", required=True)
+        parser.add_argument("-i", help="The location of the large molecule files (in npz format).", required=True)
+
+        parser.add_argument("-creation_prints", help="Display the model creaiton prints?", action=argparse.BooleanOptionalAction)
+        parser.add_argument("-warnings", help="Display warnings?", action=argparse.BooleanOptionalAction)
+
+        args = parser.parse_args(sys.argv[1:])
+
+        l_max = args.l_max
+        n_max = args.n_max
+
+        num_spin_up = args.n_spinup
+        num_repeat = args.n_repeat
+        size_thresh = args.thresh
+
+        out_file = args.csv
+        data_folder = args.i
+
+        suppress_model_creation_prints = not args.creation_prints
+        if not args.warnings:
+            warnings.filterwarnings("ignore")
 
     # END OF PARAMETERS #
 

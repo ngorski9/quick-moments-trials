@@ -1,13 +1,14 @@
 import argparse
 import torch
 import hippynn
+import numpy as np
 import os
 
 # This file is used for creating and training HIP-HOP-NN models. It only works with a hippynn.DirectoryDatabase
 # for the data, although this could be expanded to other types of databases as needed.
 
 # Returns the henergy, force and species nodes from a given tensor model type with given n_max and l_max.
-def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_consistent):
+def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_consistent, db_dir, db_name):
     from hippynn.graphs import inputs, networks, targets, physics
 
     if l_max == 0 or tensor_model == "NONE":
@@ -26,7 +27,11 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
     species = inputs.SpeciesNode(db_name="Z")
     positions = inputs.PositionsNode(db_name="R")
 
-    network = net_class("hipnn_model", (species, positions), module_kwargs=network_params)
+    if os.path.isfile(f"{db_dir}/{db_name}-CELL.npy"):
+        cells = inputs.CellNode(db_name="CELL")
+        network = net_class("hipnn_model", (species,positions,cells), periodic=True, module_kwargs=network_params)
+    else:
+        network = net_class("hipnn_model", (species, positions), module_kwargs=network_params)
 
     if not atomization_consistent:
         henergy = targets.HEnergyNode("HEnergy", network)
@@ -127,10 +132,14 @@ def main(args):
 
     hippynn.settings.WARN_LOW_DISTANCES = False
 
+    # compute possible species:
+    species = np.load(f"{args.db_dir}/{args.db_name}-Z.npy")
+    possible_species = np.unique(species)
+
     # set up network parameters
     netname = f"{args.tag}_GPU{args.gpu}"
     network_parameters = {
-        "possible_species": [0,1,6,7,8,9,15,16,17,35,53],
+        "possible_species": possible_species,
         "n_features": args.n_features,
         "n_sensitivities": args.n_sensitivities,
         "dist_soft_min": args.lower_cutoff,
@@ -162,6 +171,8 @@ def main(args):
                     tensor_order=args.tensor_order,
                     tensor_factors=args.tensor_factors,
                     atomization_consistent=args.atomization_consistent,
+                    db_dir=args.db_dir,
+                    db_name=args.db_name,
                 )
 
                 henergy.mol_energy.db_name = "T"
