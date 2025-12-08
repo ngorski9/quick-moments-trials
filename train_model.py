@@ -168,8 +168,8 @@ def main(args):
                 henergy, force, species = get_primary_nodes(
                     network_parameters,
                     tensor_model=args.tensor_model,
-                    tensor_order=args.tensor_order,
-                    tensor_factors=args.tensor_factors,
+                    l_max=args.tensor_order,
+                    n_max=args.tensor_factors,
                     atomization_consistent=args.atomization_consistent,
                     db_dir="../" + args.db_dir,
                     db_name=args.db_name,
