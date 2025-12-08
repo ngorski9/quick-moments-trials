@@ -133,7 +133,7 @@ def main(args):
     hippynn.settings.WARN_LOW_DISTANCES = False
 
     # compute possible species:
-    species = np.load(f"{args.db_dir}/{args.db_name}-Z.npy")
+    species = np.load(f"{args.db_dir}/{args.db_name}Z.npy")
     possible_species = np.unique(species)
 
     # set up network parameters
@@ -168,10 +168,10 @@ def main(args):
                 henergy, force, species = get_primary_nodes(
                     network_parameters,
                     tensor_model=args.tensor_model,
-                    l_max=args.tensor_order,
-                    n_max=args.tensor_factors,
+                    tensor_order=args.tensor_order,
+                    tensor_factors=args.tensor_factors,
                     atomization_consistent=args.atomization_consistent,
-                    db_dir=args.db_dir,
+                    db_dir="../" + args.db_dir,
                     db_name=args.db_name,
                 )
 
@@ -190,7 +190,7 @@ def main(args):
                 database = load_db(
                     db_info,
                     args.db_name,
-                    args.db_dir,
+                    "../" + args.db_dir,
                     args.db_quiet,
                     args.test_size,
                     args.valid_size,
