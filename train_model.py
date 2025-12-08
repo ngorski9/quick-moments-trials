@@ -167,8 +167,8 @@ def main(args):
                 # Create model and loss functions
                 henergy, force, species = get_primary_nodes(
                     network_parameters,
-                    l_max=args.l_max,
-                    n_max=args.n_max,
+                    l_max=args.tensor_order,
+                    n_max=args.tensor_factors,
                     tensor_factors=args.tensor_factors,
                     atomization_consistent=args.atomization_consistent,
                     db_dir=args.db_dir,
