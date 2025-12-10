@@ -59,6 +59,8 @@ if __name__ == "__main__":
         args = parser.parse_args(sys.argv[1:])
 
         kill_early = args.early_stop
+        if kill_early != float('inf'):
+            kill_early = int(kill_early)
         calc_name = args.calc_name
         out_file = args.csv
         data_prefix = args.i
