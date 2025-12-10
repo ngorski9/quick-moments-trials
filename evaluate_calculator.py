@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
         parser.add_argument("-early_stop", help="should you stop evaluating after a certain number of molecules", type=float, default=float('inf'))
         parser.add_argument("-calc_name", help="Name of the calculator to evaluate. See the comments for more details.", required=True)
-        parser.add_argument("-csv", help="csv file specifying where to write the results.", required=True)
+        parser.add_argument("-csv", help="csv file specifying where to write the results.", required=False)
         parser.add_argument("-i", help="data prefix that specifies the folder and filename patterns of the input data. See the comments for more details.", required=True)
 
         args = parser.parse_args(sys.argv[1:])
@@ -158,12 +158,15 @@ if __name__ == "__main__":
         e_ae_peratom[category] += abs(pred_energy-gt_energy)/num_atoms
         total_e_se_peratom += ((pred_energy-gt_energy)/num_atoms)**2
         total_e_ae_peratom += abs(pred_energy-gt_energy)/num_atoms
-        total_n_mols += 1
 
-        f_se_peratom[category] += np.sum(((pred_forces-gt_forces)/(num_atoms))**2)
-        total_f_se_peratom += np.sum(((pred_forces-gt_forces)/(num_atoms))**2)
-        f_ae_peratom[category] += np.sum(np.abs(pred_forces-gt_forces))/(3*num_atoms)
-        total_f_ae_peratom += np.sum(np.abs(pred_forces-gt_forces))/(3*num_atoms)
+        f_se = np.sum((pred_forces-gt_forces)**2,axis=1)
+        f_se_peratom[category] += np.sum(f_se)/num_atoms**2
+        total_f_se_peratom += np.sum(f_se)/num_atoms**2
+        f_ae_peratom[category] += np.sum(np.sqrt(f_se))/num_atoms
+        total_f_ae_peratom += np.sum(np.sqrt(f_se))/num_atoms
+
+        total_n_mols += 1
+        total_n_atoms += num_atoms
         n_mols_eval[category] += 1
 
     # Load in the category names for evaluation.
@@ -186,19 +189,21 @@ if __name__ == "__main__":
             continue
 
         avg_mol_size = mol_sizes[i] / n_mols_eval[i]
+
         e_mae_peratom = e_ae_peratom[i] / n_mols_eval[i]
         e_rmse_peratom = math.sqrt(e_se_peratom[i] / n_mols_eval[i])
+
         f_mae_peratom = f_ae_peratom[i] / n_mols_eval[i]
-        f_rmse_peratom = math.sqrt(f_se_peratom[i] / (3*n_mols_eval[i]))
+        f_rmse_peratom = math.sqrt(f_se_peratom[i] / n_mols_eval[i])
 
         print(f"{category_names[i]} ({n_mols_eval[0]} molecules @ {avg_mol_size} atoms (on avg))")
-        print(f"E RMSE (eV): {e_rmse_peratom}")
-        print(f"E MAE (eV): {e_mae_peratom}")
+        print(f"E RMSE (eV/atom): {e_rmse_peratom}")
+        print(f"E MAE (eV/atom): {e_mae_peratom}")
         print(f"F RMSE (eV/Å): {f_rmse_peratom}")
         print(f"F MAE (eV/Å): {f_mae_peratom}")
 
-        file_header.append(f"{category_names[i]} E RMSE (eV)")
-        file_header.append(f"{category_names[i]} E MAE (eV)")
+        file_header.append(f"{category_names[i]} E RMSE (eV/atom)")
+        file_header.append(f"{category_names[i]} E MAE (eV/atom)")
         file_header.append(f"{category_names[i]} F RMSE (eV/Å)")
         file_header.append(f"{category_names[i]} F MAE (eV/Å)")
         file_header.append(f"{category_names[i]} Avg Mol. Size")
@@ -211,21 +216,35 @@ if __name__ == "__main__":
 
         print()
 
-    e_mae = total_e_ae_peratom / total_n_mols
-    e_rmse = math.sqrt(total_e_se_peratom / total_n_mols)
-    f_mae = total_f_ae_peratom / total_n_mols
-    f_rmse = math.sqrt(total_f_se_peratom / total_n_mols)
+    e_mae_peratom = total_e_ae_peratom / total_n_mols
+    e_rmse_peratom = math.sqrt(total_e_se_peratom / total_n_mols)
+    f_mae_peratom = total_f_ae_peratom / total_n_mols
+    f_rmse_peratom = math.sqrt(total_f_se_peratom / total_n_mols)
+    avg_mol_size = total_n_atoms / total_n_mols
 
-    print(f"Overall E RMSE (eV) : {e_rmse}")
-    print(f"Overall E MAE (eV) : {e_mae}")
-    print(f"Overall F RMSE (eV/Å) : {f_rmse}")
-    print(f"Overall F MAE (eV/Å) : {f_mae}")
+    print(f"Overall E RMSE (eV/atom) : {e_rmse_peratom}")
+    print(f"Overall E MAE (eV/atom) : {e_mae_peratom}")
+    print(f"Overall F RMSE (eV/Å) : {f_rmse_peratom}")
+    print(f"Overall F MAE (eV/Å) : {f_mae_peratom}")
+
+    file_header.append("Overall E RMSE (eV/atom)")
+    file_header.append("Overall E MAE (eV/atom)")
+    file_header.append("Overall F RMSE (eV/Å)")
+    file_header.append("Overall F MAE (eV/Å)")
+    file_header.append("Overall Avg Mol. Size")
+
+    file_results.append(e_rmse_peratom)
+    file_results.append(e_mae_peratom)
+    file_results.append(f_rmse_peratom)
+    file_results.append(f_mae_peratom)
+    file_results.append(avg_mol_size)
 
     # Write results to file.
-    write_header = not os.path.isfile(out_file)
-    outf = open(out_file, "a")
-    writer = csv.writer(outf)
-    if write_header:
-        writer.writerow(file_header)
-    writer.writerow(file_results)
-    outf.close()    
+    if out_file:
+        write_header = not os.path.isfile(out_file)
+        outf = open(out_file, "a")
+        writer = csv.writer(outf)
+        if write_header:
+            writer.writerow(file_header)
+        writer.writerow(file_results)
+        outf.close()    
