@@ -3,26 +3,15 @@ import time
 import statistics
 import torch
 import csv
-from pet_mad.calculator import PETMADCalculator
 import numpy as np
 import warnings
 import sys
 import argparse
 
-try:
-    import matgl
-    from matgl.ext.ase import PESCalculator
-    matpes = True
-except:
-    matpes = False
-
 from model_maker import make_model
-
-from hippynn.interfaces.ase_interface.calculator import calculator_from_model
 
 from ase.io.proteindatabank import read_proteindatabank
 
-from mace.calculators import mace_off
 from ase import units
 
 import os
@@ -43,9 +32,6 @@ def main():
         ("large", "factorIX"),
         ("medium", "factorIX"),
     ]
-
-    # populate this with the latest matPES version:
-    matpes_version = "MatPES-PBE-v2025.1"
 
     if len(sys.argv) == 1:
         # l_max and n_max are as they are in HopInvariantsLayer.py
@@ -124,13 +110,20 @@ def main():
             test_molecules.append((f,a))
 
     if calc_name in ["mace-small", "mace-medium", "mace-large"]:
+        from mace.calculators import mace_off
         calc = mace_off(model=calc_name[5:],dispersion=False, dtype=torch.float32)
     elif calc_name == "PET-MAD":
+        from pet_mad.calculator import PETMADCalculator
         calc = PETMADCalculator(version="latest", device="cuda")
     elif calc_name in ["M3GNet", "CHGNet", "TensorNet"]:
+        import matgl
+        from matgl.ext.ase import PESCalculator       
+        # populate this with the latest matPES version:
+        matpes_version = "MatPES-PBE-v2025.1"
         model = matgl.load_model(f"{calc_name}-{matpes_version}-PES")
         calc = PESCalculator(model)
     else:
+        from hippynn.interfaces.ase_interface.calculator import calculator_from_model
         model, _ = make_model(calc_name[0], calc_name[1], l_max, n_max, calc_name[2], calc_name[2], calc_name[2])
         calc = calculator_from_model(model, en_unit = units.eV, dist_unit = units.Ang).to('cuda')
 

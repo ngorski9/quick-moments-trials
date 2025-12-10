@@ -1,7 +1,3 @@
-from mace.calculators import mace_off
-from pet_mad.calculator import PETMADCalculator
-from hippynn.experiment.serialization import load_model_from_cwd
-from hippynn.interfaces.ase_interface.calculator import calculator_from_model
 import ase
 from ase import units
 import numpy as np
@@ -14,12 +10,6 @@ import argparse
 from ase import units
 
 import torch
-
-try:
-    import matgl
-    from matgl.ext.ase import PESCalculator
-except:
-    pass
 
 # This file evaluates the accuracy of an ASE calculator (either MACE-OFF or ours)
 # on the test data that is from MACE. It compute the RMSE of both energy and force
@@ -41,7 +31,7 @@ if __name__ == "__main__":
         # Set this equal to 'mace-small,' 'mace-medium,' or 'mace-large' to evaluate MACE-OFF
         # Set this equal to 'PET-MAD' to evaluate PET-MAD
         # Set this equal to the matPES model type (either M3GNet, CHGNet, or TensorNet)
-        # small, medium, or large, respectively. Otherwise, specify the folder
+
         # corresponding to a hippynn calculator that you would like to evaluate.
         calc_name = "PET-MAD"
 
@@ -89,13 +79,20 @@ if __name__ == "__main__":
 
     # Load in the calculator:
     if calc_name in ["mace-small", "mace-medium", "mace-large"]:
+        from mace.calculators import mace_off
         calc = mace_off(model=calc_name[5:],dispersion=False, dtype=torch.float32)
     elif calc_name == "PET-MAD":
+        from pet_mad.calculator import PETMADCalculator
         calc = PETMADCalculator(version="latest", device="cuda")
     elif calc_name in ["M3GNet", "CHGNet", "TensorNet"]:
+        import matgl
+        from matgl.ext.ase import PESCalculator
         model = matgl.load_model(f"{calc_name}-{matpes_version}-PES")
         calc = PESCalculator(model)
     else:
+        from hippynn.experiment.serialization import load_model_from_cwd
+        from hippynn.interfaces.ase_interface.calculator import calculator_from_model
+
         # change directory to the hippynn model that we are loading.
         # then load from cwd and change the directory back.
         cwd = os.getcwd()
