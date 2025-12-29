@@ -57,6 +57,7 @@ def make_loss(henergy, force, species, force_percent):
         "T-RMSE": MSELoss.of_node(henergy) ** (1 / 2),
         "T-RMSE/atom": MSELoss(E_pred_per_atom, E_true_per_atom) ** (1 / 2),
         "T-MAE": MAELoss.of_node(henergy),
+        "T-MAE/atom": MAELoss(E_pred_per_atom, E_true_per_atom),
         "T-RSQ": Rsq.of_node(henergy),
         "T-Hier": Mean.of_node(henergy.hierarchicality),
     }
