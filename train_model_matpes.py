@@ -14,7 +14,6 @@ import argparse
 import torch
 import hippynn
 
-
 def make_model_and_loss(network_params, tensor_model, tensor_order, tensor_factors, atomization_consistent, force_training):
     """
     Build the model graph for energy and potentially force prediction.
