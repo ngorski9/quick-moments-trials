@@ -8,8 +8,10 @@ import os
 # for the data, although this could be expanded to other types of databases as needed.
 
 # Returns the henergy, force and species nodes from a given tensor model type with given n_max and l_max.
-def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_consistent, db_dir, db_name):
+def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_consistent, db_dir, db_name, stress_and_force):
     from hippynn.graphs import inputs, networks, targets, physics
+    from hippynn.graphs.nodes.misc import StrainInducer
+    from hippynn.graphs.gops import replace_node
 
     if l_max == 0 or tensor_model == "NONE":
         net_class = networks.Hipnn
@@ -27,8 +29,11 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
     species = inputs.SpeciesNode(db_name="Z")
     positions = inputs.PositionsNode(db_name="R")
 
-    if os.path.isfile(f"{db_dir}/{db_name}-CELL.npy"):
+    has_cells = os.path.isfile(f"{db_dir}/{db_name}CELL.npy")
+    if has_cells:
         cells = inputs.CellNode(db_name="CELL")
+
+    if has_cells:
         network = net_class("hipnn_model", (species,positions,cells), periodic=True, module_kwargs=network_params)
     else:
         network = net_class("hipnn_model", (species, positions), module_kwargs=network_params)
@@ -38,7 +43,18 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
     else:
         henergy = targets.AtomizationEnergyNode("HEnergy", network)
 
-    force = physics.GradientNode("forces", (henergy, positions), sign=-1)
+    if stress_and_force:
+        if not has_cells:
+            raise Exception("Computing loss on stress requires cells")
+        strain_inducer = StrainInducer("Strain_inducer", (positions, cells))
+
+        replace_node(positions, strain_inducer.strained_coordinates)
+        replace_node(cells, strain_inducer.strained_cell)
+
+        strain = strain_inducer.strain
+        force = physics.StressForceNode("forces", (henergy, strain, positions, cells))
+    else:
+        force = physics.GradientNode("forces", (henergy, positions), sign=-1)
 
     return henergy, force, species
 
@@ -46,7 +62,7 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
 # Creates the loss nodes for training from the given henergy, force, and species node.
 # force_percent is a number from 0-1 that states how much force should be weighted in
 # the loss function (set force_percent = 0.0 to not train on forces at all).
-def make_loss(henergy, force, species, force_percent):
+def make_loss(henergy, force, species, force_percent, stress_and_force):
     from hippynn.graphs.nodes.loss import MSELoss, MAELoss, Rsq, Mean
     from hippynn.graphs import physics
 
@@ -62,17 +78,32 @@ def make_loss(henergy, force, species, force_percent):
         "T-Hier": Mean.of_node(henergy.hierarchicality),
     }
 
-    force_losses = {
-        "F-RMSE": MSELoss.of_node(force) ** (1 / 2),
-        "F-MAE": MAELoss.of_node(force),
-        "F-RSQ": Rsq.of_node(force),
-    }
+    if stress_and_force:
+        force_losses = {
+            "F-RMSE": MSELoss.of_node(force.forces) ** (1 / 2),
+            "F-MAE": MAELoss.of_node(force.forces),
+            "F-RSQ": Rsq.of_node(force.forces),
+            "S-RMSE" : MSELoss.of_node(force.stress) ** (1 / 2),
+            "S-MAE" : MAELoss.of_node(force.stress),
+            "S-RSQ" : Rsq.of_node(force.stress),
+        }
+    else:
+        force_losses = {
+            "F-RMSE": MSELoss.of_node(force) ** (1 / 2),
+            "F-MAE": MAELoss.of_node(force),
+            "F-RSQ": Rsq.of_node(force),
+        }
 
     losses["EnergyTotal"] = losses["T-RMSE"] + losses["T-MAE"]
     losses["LossTotal"] = losses["EnergyTotal"] + losses["T-Hier"]
     if force_percent != 0.0:
+
         losses.update(force_losses)
-        losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"]
+        if stress_and_force:
+            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 0.1 * (losses["S-RMSE"] + losses["S-MAE"])
+        else:
+            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"]
+
         losses["LossTotal"] = 2*( (1 - force_percent) * losses["LossTotal"] + force_percent * losses["ForceTotal"] )
 
     return losses
@@ -174,12 +205,18 @@ def main(args):
                     atomization_consistent=args.atomization_consistent,
                     db_dir="../" + args.db_dir,
                     db_name=args.db_name,
+                    stress_and_force=args.stress_and_force
                 )
 
                 henergy.mol_energy.db_name = "T"
-                force.db_name = "F"
 
-                validation_losses = make_loss(henergy, force, species, force_percent=args.force_percent)
+                if args.stress_and_force:
+                    force.forces.db_name = "F"
+                    force.stress.db_name = "S"
+                else:
+                    force.db_name = "F"
+
+                validation_losses = make_loss(henergy, force, species, force_percent=args.force_percent, stress_and_force=args.stress_and_force)
 
                 train_loss = validation_losses["LossTotal"]
 
@@ -258,7 +295,7 @@ if __name__ == "__main__":
         "If tensor_order==0 then vanilla HIP-NN will "
         "be used regardless.",
     )
-    parser.add_argument("--tensor_order", type=int, default=3, help="tensor order $\ell$")
+    parser.add_argument("--tensor_order", type=int, default=3, help="tensor order $\\ell$")
     parser.add_argument("--tensor_factors", type=int, default=4, help="number of factors used (in HIP-HOP-NN only)")
     parser.add_argument("--atomization_consistent", type=bool, default=False)
 
@@ -272,9 +309,7 @@ if __name__ == "__main__":
         "--use_ccx_subset",
         type=bool,
         default=False,
-        help="Train only to configurations from the ANI-1ccx subset."
-        " Note that this will still use the energies using the `qm_method` argument."
-        " *Note!* This argument will multiply the patience by a factor of 4.",
+        help="Train model on a given dataset"
     )
 
     parser.add_argument("--progress", action=BooleanOptionalAction, default=True, help="Whether to use progress bars.")
@@ -287,6 +322,7 @@ if __name__ == "__main__":
     parser.add_argument("--valid_size", type=float, default=0.1, help="Percentage of dataset used for validation (decimal between 0 and 1)")
     parser.add_argument("--force_restart", action=BooleanOptionalAction, default=False, help="Restart training from beginning.")
     parser.add_argument("--force_percent", type=float, default=0.5, help="What percentage of the loss is due to the force.")
+    parser.add_argument("--stress_and_force", action=BooleanOptionalAction, help="Also train stress in addition to force")
 
     args = parser.parse_args()
 

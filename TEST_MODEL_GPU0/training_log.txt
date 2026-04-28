@@ -1,0 +1,208 @@
+/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/networks/hiphop.py:12: UserWarning: HIP-HOP-NN is still in a beta state: Details, defaults, and API are still subject to change.
+  warnings.warn("HIP-HOP-NN is still in a beta state: " "Details, defaults, and API are still subject to change.")
+Determined Inputs: ["Cells(db_name='CELL')", "Positions(db_name='R')", "Species(db_name='Z')"]
+Determined Outputs: ['forces.stress', 'forces.forces', 'HEnergy.mol_energy', 'HEnergy.hierarchicality']
+Determined Targets: ['forces.stress', 'HEnergy.mol_energy', 'forces.forces', "Species(db_name='Z')"]
+Device was not specified. Attempting to default to device: cuda:0
+Arrays found:  {'F': 'matpes-F.npy', 'Z': 'matpes-Z.npy', 'C': 'matpes-C.npy', 'CELL': 'matpes-CELL.npy', 'T': 'matpes-T.npy', 'S': 'matpes-S.npy', 'R': 'matpes-R.npy'}
+Data types:
+{'F': dtype('float32'), 'Z': dtype('int64'), 'CELL': dtype('float32'), 'T': dtype('float32'), 'S': dtype('float32'), 'R': dtype('float32')}
+All arrays:
+--------------------------------------------------------------------------------------
+| Name                           | dtype              | shape                        |
+--------------------------------------------------------------------------------------
+| F                              | dtype('float32')   | (391240, 243, 3)             |
+| Z                              | dtype('int64')     | (391240, 243)                |
+| CELL                           | dtype('float32')   | (391240, 3, 3)               |
+| T                              | dtype('float32')   | (391240,)                    |
+| S                              | dtype('float32')   | (391240, 3, 3)               |
+| R                              | dtype('float32')   | (391240, 243, 3)             |
+--------------------------------------------------------------------------------------
+Finished checking input and target arrays; all necessary arrays were found.
+Database: Using auto-generated data indices
+Adding split indices for split: test
+Arrays for split: test
+--------------------------------------------------------------------------------------
+| Name                           | dtype              | shape                        |
+--------------------------------------------------------------------------------------
+| F                              | dtype('float32')   | (39124, 243, 3)              |
+| Z                              | dtype('int64')     | (39124, 243)                 |
+| CELL                           | dtype('float32')   | (39124, 3, 3)                |
+| T                              | dtype('float32')   | (39124,)                     |
+| S                              | dtype('float32')   | (39124, 3, 3)                |
+| R                              | dtype('float32')   | (39124, 243, 3)              |
+| indices                        | dtype('int64')     | (39124,)                     |
+| split_indices                  | dtype('int64')     | (39124,)                     |
+--------------------------------------------------------------------------------------
+Adding split indices for split: valid
+Arrays for split: valid
+--------------------------------------------------------------------------------------
+| Name                           | dtype              | shape                        |
+--------------------------------------------------------------------------------------
+| F                              | dtype('float32')   | (39124, 243, 3)              |
+| Z                              | dtype('int64')     | (39124, 243)                 |
+| CELL                           | dtype('float32')   | (39124, 3, 3)                |
+| T                              | dtype('float32')   | (39124,)                     |
+| S                              | dtype('float32')   | (39124, 3, 3)                |
+| R                              | dtype('float32')   | (39124, 243, 3)              |
+| indices                        | dtype('int64')     | (39124,)                     |
+| split_indices                  | dtype('int64')     | (39124,)                     |
+--------------------------------------------------------------------------------------
+Adding split indices for split: train
+Arrays for split: train
+--------------------------------------------------------------------------------------
+| Name                           | dtype              | shape                        |
+--------------------------------------------------------------------------------------
+| F                              | dtype('float32')   | (312992, 243, 3)             |
+| Z                              | dtype('int64')     | (312992, 243)                |
+| CELL                           | dtype('float32')   | (312992, 3, 3)               |
+| T                              | dtype('float32')   | (312992,)                    |
+| S                              | dtype('float32')   | (312992, 3, 3)               |
+| R                              | dtype('float32')   | (312992, 243, 3)             |
+| indices                        | dtype('int64')     | (312992,)                    |
+| split_indices                  | dtype('int64')     | (312992,)                    |
+--------------------------------------------------------------------------------------
+Database: Splitting complete.
+Computed E0 energies: tensor([ -3.6572,  -1.7945,  -3.7362,  -3.3710,  -6.6299,  -8.5300,  -5.5321,
+         -7.0020,  -4.9754,  -0.0187,  -1.7760,  -1.6495,  -4.4489,  -6.0801,
+         -6.3417,  -5.0689,  -2.6834,  -0.0427,  -1.6388,  -5.2071,  -7.1224,
+         -9.6077,  -9.7045,  -9.4690,  -9.3121,  -7.7439,  -6.3477,  -4.2900,
+         -3.1348,  -0.9325,  -3.3459,  -4.5338,  -4.4715,  -4.1802,  -2.3290,
+          8.3491,  -1.4622,  -3.9834,  -8.6737,  -9.5747, -10.5415, -10.6491,
+         -8.7348,  -8.2814,  -6.6312,  -4.7508,  -1.0146,  -0.7262,  -2.6635,
+         -3.8748,  -3.9164,  -3.1892,  -1.8576,  11.4467,  -1.7656,  -5.2640,
+         -7.8401,  -7.3436,  -8.0332,  -9.0078,  -7.9658, -11.5797, -13.3578,
+        -15.1591, -11.3647, -10.4513,  -8.9372,  -8.0230,  -6.9008,  -4.9000,
+         -6.3326, -10.3621, -11.8132, -12.5114, -10.8054,  -9.4962,  -7.6793,
+         -5.5168,  -2.7016,   0.8240,  -1.6878,  -3.1859,  -3.4871,  -3.3037,
+         -8.1885,  -8.3487, -12.0142, -11.7910, -13.2813])
+/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/experiment/controllers.py:219: UserWarning: Parameter verbose no longer supported for schedulers. It will be ignored.
+  warnings.warn("Parameter verbose no longer supported for schedulers. It will be ignored.")
+Device was not specified. Attempting to default to device: cuda:0
+Using device:  cuda
+Beginning training.
+Model:
+Inputs:
+	 I0 : CellNode('Cells(db_name='CELL')')<0x7c09aafe1a30>
+	 I1 : PositionsNode('Positions(db_name='R')')<0x7c09abc226c0>
+	 I2 : SpeciesNode('Species(db_name='Z')')<0x7c09aafe1970>
+Outputs:
+	 O0 : IndexNode('forces.stress')<0x7c09aafe3fb0>
+	 O1 : IndexNode('forces.forces')<0x7c09ab806ae0>
+	 O2 : IndexNode('HEnergy.mol_energy')<0x7c09aafe3b30>
+	 O3 : IndexNode('HEnergy.hierarchicality')<0x7c09aafe3ce0>
+Order:
+I2-------------------> H0  : OneHot
+H0-------------------> H1  : OneHot.encoding
+H0-------------------> H2  : OneHot.nonblank
+H2,H1----------------> H3  : PaddingIndexer
+H3-------------------> H5  : PaddingIndexer.indexed_features
+H3-------------------> H6  : PaddingIndexer.inv_real_atoms
+H3-------------------> H7  : PaddingIndexer.mol_index
+H3-------------------> H9  : PaddingIndexer.n_molecules
+H3-------------------> H10 : PaddingIndexer.real_atoms
+I1,I0----------------> H11 : Strain_inducer
+H11------------------> H12 : Strain_inducer.strain
+H11------------------> H13 : Strain_inducer.strained_cell
+H11------------------> H14 : Strain_inducer.strained_coordinates
+H13,H14,H10,H2,H6----> H15 : PairIndexer
+H15------------------> H18 : PairIndexer.pair_coord
+H15------------------> H19 : PairIndexer.pair_dist
+H15------------------> H20 : PairIndexer.pair_first
+H15------------------> H21 : PairIndexer.pair_second
+H21,H5,H18,H20,H19---> H22 : hipnn_model
+H7,H9,H22------------> H23 : HEnergy
+H23------------------> O3  : HEnergy.hierarchicality
+H23------------------> O2  : HEnergy.mol_energy
+I1,H12,O2,I0---------> H31 : forces
+H31------------------> O1  : forces.forces
+H31------------------> O0  : forces.stress
+Model Params:
+cuda:0 Fixed torch.int64 torch.Size([95]) moddict.node0.species_map
+cuda:0 Learned torch.float32 torch.Size([4, 16, 89]) moddict.node22.blocks.0.0.base_layer.int_weights
+cuda:0 Learned torch.float32 torch.Size([16, 13, 16]) moddict.node22.blocks.0.0.base_layer.mixing_weights
+cuda:0 Learned torch.float32 torch.Size([1, 4]) moddict.node22.blocks.0.0.base_layer.sensitivity.mu
+cuda:0 Learned torch.float32 torch.Size([1, 4]) moddict.node22.blocks.0.0.base_layer.sensitivity.sigma
+cuda:0 Learned torch.float32 torch.Size([16, 89]) moddict.node22.blocks.0.0.base_layer.selfint.weight
+cuda:0 Learned torch.float32 torch.Size([16]) moddict.node22.blocks.0.0.base_layer.selfint.bias
+cuda:0 Learned torch.float32 torch.Size([208]) moddict.node22.blocks.0.0.base_layer.group_norm.weight
+cuda:0 Learned torch.float32 torch.Size([208]) moddict.node22.blocks.0.0.base_layer.group_norm.bias
+cuda:0 Learned torch.float32 torch.Size([16, 16]) moddict.node22.blocks.0.0.res_layer.weight
+cuda:0 Learned torch.float32 torch.Size([16]) moddict.node22.blocks.0.0.res_layer.bias
+cuda:0 Learned torch.float32 torch.Size([16, 89]) moddict.node22.blocks.0.0.adjust_layer.weight
+cuda:0 Learned torch.float32 torch.Size([16, 16]) moddict.node22.blocks.0.1.base_layer.weight
+cuda:0 Learned torch.float32 torch.Size([16]) moddict.node22.blocks.0.1.base_layer.bias
+cuda:0 Learned torch.float32 torch.Size([16, 16]) moddict.node22.blocks.0.1.res_layer.weight
+cuda:0 Learned torch.float32 torch.Size([16]) moddict.node22.blocks.0.1.res_layer.bias
+cuda:0 Fixed torch.float32 torch.Size([1, 1]) moddict.node22.tensor_extractor.pmaps.0
+cuda:0 Fixed torch.float32 torch.Size([3, 3]) moddict.node22.tensor_extractor.pmaps.1
+cuda:0 Fixed torch.float32 torch.Size([3, 3, 5]) moddict.node22.tensor_extractor.pmaps.2
+cuda:0 Fixed torch.float32 torch.Size([3, 3, 3, 7]) moddict.node22.tensor_extractor.pmaps.3
+cuda:0 Fixed torch.float32 torch.Size([1, 89]) moddict.node23.layers.0.weight
+cuda:0 Learned torch.float32 torch.Size([1, 16]) moddict.node23.layers.1.weight
+cuda:0 Learned torch.float32 torch.Size([1]) moddict.node23.layers.1.bias
+Total Count: 13573
+At least 11 epochs will be run
+__________________________________________________
+Epoch 0:
+Learning rate:     0.001
+Batch Size: 1
+Training Batches:   0%|          | 0/312992 [00:00<?, ?batch/s]Training Batches:   0%|          | 1/312992 [00:20<1798:45:04, 20.69s/batch]Training Batches:   0%|          | 25/312992 [00:22<57:14:18,  1.52batch/s] Training Batches:   0%|          | 100/312992 [00:23<11:40:16,  7.45batch/s]Training Batches:   0%|          | 174/312992 [00:24<6:04:06, 14.32batch/s] Training Batches:   0%|          | 250/312992 [00:25<3:54:15, 22.25batch/s]Training Batches:   0%|          | 326/312992 [00:26<2:50:36, 30.54batch/s]Training Batches:   0%|          | 401/312992 [00:27<2:15:03, 38.58batch/s]Training Batches:   0%|          | 476/312992 [00:28<1:53:07, 46.04batch/s]Training Batches:   0%|          | 551/312992 [00:29<1:39:04, 52.56batch/s]Training Batches:   0%|          | 628/312992 [00:30<1:29:04, 58.45batch/s]Training Batches:   0%|          | 703/312992 [00:31<1:23:04, 62.65batch/s]Training Batches:   0%|          | 778/312992 [00:32<1:20:29, 64.65batch/s]Training Batches:   0%|          | 855/312992 [00:33<1:16:38, 67.88batch/s]Training Batches:   0%|          | 931/312992 [00:34<1:14:13, 70.08batch/s]Training Batches:   0%|          | 1007/312992 [00:35<1:12:43, 71.50batch/s]Training Batches:   0%|          | 1084/312992 [00:36<1:11:23, 72.81batch/s]Training Batches:   0%|          | 1160/312992 [00:37<1:11:19, 72.87batch/s]Training Batches:   0%|          | 1237/312992 [00:38<1:10:20, 73.87batch/s]Training Batches:   0%|          | 1314/312992 [00:39<1:09:34, 74.67batch/s]Training Batches:   0%|          | 1390/312992 [00:40<1:09:46, 74.43batch/s]Training Batches:   0%|          | 1466/312992 [00:41<1:09:22, 74.84batch/s]Training Batches:   0%|          | 1542/312992 [00:42<1:09:17, 74.92batch/s]Training Batches:   1%|          | 1619/312992 [00:43<1:08:56, 75.28batch/s]Training Batches:   1%|          | 1695/312992 [00:44<1:09:16, 74.90batch/s]Training Batches:   1%|          | 1771/312992 [00:46<1:31:57, 56.40batch/s]Training Batches:   1%|          | 1843/312992 [00:47<1:26:12, 60.15batch/s]Training Batches:   1%|          | 1915/312992 [00:48<1:22:19, 62.98batch/s]Training Batches:   1%|          | 1993/312992 [00:49<1:17:35, 66.80batch/s]Training Batches:   1%|          | 2069/312992 [00:50<1:14:59, 69.11batch/s]Training Batches:   1%|          | 2145/312992 [00:51<1:13:04, 70.90batch/s]Training Batches:   1%|          | 2220/312992 [00:52<1:11:56, 71.99batch/s]Training Batches:   1%|          | 2297/312992 [00:53<1:10:37, 73.32batch/s]Training Batches:   1%|          | 2372/312992 [00:54<1:10:19, 73.62batch/s]Training Batches:   1%|          | 2447/312992 [00:55<1:10:18, 73.61batch/s]Training Batches:   1%|          | 2522/312992 [00:57<1:10:30, 73.38batch/s]Training Batches:   1%|          | 2596/312992 [00:58<1:11:18, 72.55batch/s]Training Batches:   1%|          | 2669/312992 [00:59<1:11:33, 72.27batch/s]Training Batches:   1%|          | 2743/312992 [01:00<1:11:06, 72.72batch/s]Training Batches:   1%|          | 2816/312992 [01:01<1:11:57, 71.84batch/s]Training Batches:   1%|          | 2888/312992 [01:02<1:14:35, 69.29batch/s]Training Batches:   1%|          | 2958/312992 [01:03<1:16:05, 67.90batch/s]Training Batches:   1%|          | 3027/312992 [01:04<1:15:43, 68.22batch/s]Training Batches:   1%|          | 3100/312992 [01:05<1:14:26, 69.37batch/s]Training Batches:   1%|1         | 3175/312992 [01:06<1:12:56, 70.80batch/s]Training Batches:   1%|1         | 3249/312992 [01:07<1:12:08, 71.55batch/s]Training Batches:   1%|1         | 3322/312992 [01:08<1:11:59, 71.69batch/s]Training Batches:   1%|1         | 3397/312992 [01:09<1:11:15, 72.42batch/s]Training Batches:   1%|1         | 3470/312992 [01:10<1:11:26, 72.20batch/s]Training Batches:   1%|1         | 3543/312992 [01:11<1:11:14, 72.39batch/s]Training Batches:   1%|1         | 3617/312992 [01:12<1:11:04, 72.55batch/s]Training Batches:   1%|1         | 3690/312992 [01:13<1:12:58, 70.64batch/s]Training Batches:   1%|1         | 3763/312992 [01:14<1:12:24, 71.18batch/s]Training Batches:   1%|1         | 3835/312992 [01:15<1:12:57, 70.62batch/s]Training Batches:   1%|1         | 3908/312992 [01:16<1:12:16, 71.27batch/s]Training Batches:   1%|1         | 3983/312992 [01:17<1:11:15, 72.27batch/s]Training Batches:   1%|1         | 4057/312992 [01:18<1:10:49, 72.69batch/s]Training Batches:   1%|1         | 4130/312992 [01:19<1:12:00, 71.49batch/s]                                                                            ******* TRAINING INTERRUPTED *******
+Finishing up...
+Training phase ended.
+Making plots over training time...
+Testing model...
+Evaluating train:   0%|          | 0/312992 [00:00<?, ?batch/s]                                                               Uncaught exception, logging interrupted.
+Traceback (most recent call last):
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/tools.py", line 53, in log_terminal
+    yield file
+  File "/home/nathan/Documents/research/quickMoments/quick-moments-trials/train_model.py", line 260, in main
+    setup_and_train(
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/experiment/routines.py", line 139, in setup_and_train
+    return train_model(
+           ^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/experiment/routines.py", line 338, in train_model
+    test_model(
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/experiment/routines.py", line 396, in test_model
+    evaluation_metrics = {k: evaluator.evaluate(gen, eval_type=k, when=when) for k, gen in evaluation_data.items()}
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/experiment/evaluator.py", line 59, in evaluate
+    batch_predictions = self.model(*batch_inputs)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/graphs/graph.py", line 135, in forward
+    computed[this_node] = self.get_module(this_node)(*(computed[inkey] for inkey in inputs_for_this_node))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/networks/hiphop.py", line 42, in forward
+    features = int_layer(features, pair_first, pair_second, pair_dist, tensor_rhats)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/layers/transform.py", line 52, in forward
+    middle_activation = self.activation(self.base_layer(*input))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nathan/Documents/research/quickMoments/hippynn-optimizations/hippynn/layers/hiplayers/interactions.py", line 346, in forward
+    normalized_invariants = normalized_invariants.reshape(n_atoms_real, self.nf_out * self.n_invariants)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

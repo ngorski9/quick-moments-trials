@@ -93,24 +93,22 @@ def make_model_and_loss(network_params, tensor_model, tensor_order, tensor_facto
     return energy, losses
 
 
-def load_db(db_info, delete_fraction, seed, data_location, n_workers):
-    """
-    Load the database.
-    """
+# creates a database given relevant information about the database.
+def load_db(db_info, name, directory, quiet, test_size, valid_size, seed):
 
-    from hippynn.databases import NPZDatabase
+    from hippynn.databases import DirectoryDatabase
 
-    database = NPZDatabase(file=data_location, seed=seed, num_workers=n_workers, allow_unfound=True, pin_memory=False, **db_info)
+    database_params = {
+        "name": name,  # Prefix for arrays in folder
+        "directory": directory,
+        "quiet": quiet,
+        "test_size": test_size,
+        "valid_size": valid_size,
+        "seed": seed,
+        **db_info,  # Adds the inputs and targets names from the model as things to load
+    }
 
-    if delete_fraction:
-        n_items = len(database.arr_dict["E"])
-        remove = int(n_items * delete_fraction)
-        for k, v in database.arr_dict.items():
-            database.arr_dict[k] = v[:-remove]
-
-    for sname in ["train", "valid", "test"]:
-        mask = database.arr_dict[sname]
-        database.make_explicit_split_bool(sname, mask)
+    database = DirectoryDatabase(**database_params)
 
     return database
 
@@ -208,11 +206,13 @@ def main(args):
             training_modules, db_info = assemble_for_training(train_loss, validation_losses)
 
             database = load_db(
-                db_info,
-                delete_fraction=args.delete_fraction,
-                n_workers=args.n_workers,
-                seed=args.seed,
-                data_location=args.data_location,
+                db_info, 
+                args.db_name,
+                args.db_dir,
+                args.db_quiet,
+                args.test_size,
+                args.valid_size,
+                args.seed
             )
 
             validate_species(database,network_parameters["possible_species"])
@@ -290,9 +290,11 @@ if __name__ == "__main__":
     parser.add_argument("--tensor_factors", type=int, default=3, help="number of factors used (in HIP-HOP-NN only)")
     parser.add_argument("--atomization_consistent", type=bool, default=False)
 
-    parser.add_argument("--data_location", type=str, default="../../../datasets/matPES/matPES_R2SCAN.npz")
-    parser.add_argument("--delete_fraction", type=float, default=0.0,
-                        help="For debugging. Removes this fraction of the database before training.")
+    parser.add_argument("--db_name", type=str, default="matpes-", help="prefix in front of data files.")
+    parser.add_argument("--db_dir", type=str, default="../../../data/matpes", help="directory containing data files")
+    parser.add_argument("--db_quiet", action=BooleanOptionalAction, default=False, help="should the database be quiet")
+    parser.add_argument("--test_size", type=float, default=0.1, help="Percentage of the dataset used for testing (decimal between 0 and 1)")
+    parser.add_argument("--valid_size", type=float, default=0.1, help="Percentage of dataset used for validation (decimal between 0 and 1)")
 
     parser.add_argument("--force_training", action=BooleanOptionalAction, default=True, help="Use force/stress training.")
 
