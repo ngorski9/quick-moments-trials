@@ -82,8 +82,8 @@ def make_loss(henergy, force, species, force_percent, stress_and_force):
             "F-RMSE": MSELoss.of_node(force.forces) ** (1 / 2),
             "F-MAE": MAELoss.of_node(force.forces),
             "F-RSQ": Rsq.of_node(force.forces),
-            "S-RMSE" : MSELoss.of_node(force.stress) ** (1 / 2),
-            "S-MAE" : MAELoss.of_node(force.stress),
+            "S-RMSE" : 1602.17662 * MSELoss.of_node(force.stress) ** (1 / 2),
+            "S-MAE" : 1602.17662 * MAELoss.of_node(force.stress),
             "S-RSQ" : Rsq.of_node(force.stress),
         }
     else:
@@ -99,7 +99,7 @@ def make_loss(henergy, force, species, force_percent, stress_and_force):
 
         losses.update(force_losses)
         if stress_and_force:
-            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 10 * (losses["S-RMSE"] + losses["S-MAE"])
+            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 0.1 * (losses["S-RMSE"] + losses["S-MAE"])
         else:
             losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"]
 
