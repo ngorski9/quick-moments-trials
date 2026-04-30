@@ -58,7 +58,6 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
 
     return henergy, force, species
 
-
 # Creates the loss nodes for training from the given henergy, force, and species node.
 # force_percent is a number from 0-1 that states how much force should be weighted in
 # the loss function (set force_percent = 0.0 to not train on forces at all).
@@ -100,7 +99,7 @@ def make_loss(henergy, force, species, force_percent, stress_and_force):
 
         losses.update(force_losses)
         if stress_and_force:
-            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 0.1 * (losses["S-RMSE"] + losses["S-MAE"])
+            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 10 * (losses["S-RMSE"] + losses["S-MAE"])
         else:
             losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"]
 
@@ -327,3 +326,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
