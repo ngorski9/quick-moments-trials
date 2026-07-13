@@ -61,7 +61,7 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
 # Creates the loss nodes for training from the given henergy, force, and species node.
 # force_percent is a number from 0-1 that states how much force should be weighted in
 # the loss function (set force_percent = 0.0 to not train on forces at all).
-def make_loss(henergy, force, species, force_percent, stress_and_force):
+def make_loss(henergy, force, species, force_percent, stress_and_force, mae_only):
     from hippynn.graphs.nodes.loss import MSELoss, MAELoss, Rsq, Mean
     from hippynn.graphs import physics
 
@@ -86,6 +86,7 @@ def make_loss(henergy, force, species, force_percent, stress_and_force):
             "S-MAE" : 1602.17662 * MAELoss.of_node(force.stress),
             "S-RSQ" : Rsq.of_node(force.stress),
         }
+
     else:
         force_losses = {
             "F-RMSE": MSELoss.of_node(force) ** (1 / 2),
@@ -93,15 +94,24 @@ def make_loss(henergy, force, species, force_percent, stress_and_force):
             "F-RSQ": Rsq.of_node(force),
         }
 
-    losses["EnergyTotal"] = losses["T-RMSE"] + losses["T-MAE"]
+    if mae_only:
+        losses["EnergyTotal"] = losses["T-MAE"]
+    else:
+        losses["EnergyTotal"] = losses["T-RMSE"] + losses["T-MAE"]
     losses["LossTotal"] = losses["EnergyTotal"] + losses["T-Hier"]
     if force_percent != 0.0:
 
         losses.update(force_losses)
         if stress_and_force:
-            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 0.1 * (losses["S-RMSE"] + losses["S-MAE"])
+            if mae_only:
+                losses["ForceTotal"] = losses["F-MAE"] + 0.1 * losses["S-MAE"]
+            else:
+                losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 0.1 * (losses["S-RMSE"] + losses["S-MAE"])
         else:
-            losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"]
+            if mae_only:
+                losses["ForceTotal"] = losses["F-MAE"]
+            else:
+                losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"]
 
         losses["LossTotal"] = 2*( (1 - force_percent) * losses["LossTotal"] + force_percent * losses["ForceTotal"] )
 
@@ -215,7 +225,7 @@ def main(args):
                 else:
                     force.db_name = "F"
 
-                validation_losses = make_loss(henergy, force, species, force_percent=args.force_percent, stress_and_force=args.stress_and_force)
+                validation_losses = make_loss(henergy, force, species, force_percent=args.force_percent, stress_and_force=args.stress_and_force, mae_only=args.mae_only)
 
                 train_loss = validation_losses["LossTotal"]
 
@@ -322,6 +332,7 @@ if __name__ == "__main__":
     parser.add_argument("--force_restart", action=BooleanOptionalAction, default=False, help="Restart training from beginning.")
     parser.add_argument("--force_percent", type=float, default=0.5, help="What percentage of the loss is due to the force.")
     parser.add_argument("--stress_and_force", action=BooleanOptionalAction, help="Also train stress in addition to force")
+    parser.add_argument("--mae_only", actio=BooleanOptionalAction, help="Only use MAE in loss, rather than MAE and RMSE")
 
     args = parser.parse_args()
 
