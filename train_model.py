@@ -332,7 +332,7 @@ if __name__ == "__main__":
     parser.add_argument("--force_restart", action=BooleanOptionalAction, default=False, help="Restart training from beginning.")
     parser.add_argument("--force_percent", type=float, default=0.5, help="What percentage of the loss is due to the force.")
     parser.add_argument("--stress_and_force", action=BooleanOptionalAction, help="Also train stress in addition to force")
-    parser.add_argument("--mae_only", actio=BooleanOptionalAction, help="Only use MAE in loss, rather than MAE and RMSE")
+    parser.add_argument("--mae_only", action=BooleanOptionalAction, help="Only use MAE in loss, rather than MAE and RMSE")
 
     args = parser.parse_args()
 
