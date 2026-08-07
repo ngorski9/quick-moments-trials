@@ -172,6 +172,10 @@ def main(args):
     torch.set_default_dtype(torch.float32)
 
     hippynn.settings.WARN_LOW_DISTANCES = False
+    if args.disable_tensor_message_passing:
+        hippynn.settings.USE_TENSOR_MESSAGE_PASSING = False
+    if args.disable_polynomial_invariants:
+        hippynn.settings.USE_POLYNOMIAL_INVARIANTS = False
 
     # compute possible species:
     species = np.load(f"{args.db_dir}/{args.db_name}Z.npy")
@@ -334,7 +338,9 @@ if __name__ == "__main__":
     parser.add_argument("--stress_and_force", action=BooleanOptionalAction, help="Also train stress in addition to force")
     parser.add_argument("--mae_only", action=BooleanOptionalAction, help="Only use MAE in loss, rather than MAE and RMSE")
 
+    parser.add_argument("--disable-tensor-message-passing", action=BooleanOptionalAction, help="Disable fused tensor message passing. If omitted, use the hippynn default.")
+    parser.add_argument("--disable-polynomial-invariants", action=BooleanOptionalAction, help="Disable Triton polynomial-invariant evaluation. If omitted, use the hippynn default.")
+
     args = parser.parse_args()
 
     main(args)
-
