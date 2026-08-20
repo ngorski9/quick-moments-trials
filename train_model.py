@@ -8,7 +8,17 @@ import os
 # for the data, although this could be expanded to other types of databases as needed.
 
 # Returns the henergy, force and species nodes from a given tensor model type with given n_max and l_max.
-def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_consistent, db_dir, db_name, stress_and_force):
+def get_primary_nodes(
+    network_params,
+    tensor_model,
+    l_max,
+    n_max,
+    atomization_consistent,
+    db_dir,
+    db_name,
+    force_weight,
+    stress_weight,
+):
     from hippynn.graphs import inputs, networks, targets, physics
     from hippynn.graphs.nodes.misc import StrainInducer
     from hippynn.graphs.gops import replace_node
@@ -43,7 +53,7 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
     else:
         henergy = targets.AtomizationEnergyNode("HEnergy", network)
 
-    if stress_and_force:
+    if stress_weight != 0:
         if not has_cells:
             raise Exception("Computing loss on stress requires cells")
         strain_inducer = StrainInducer("Strain_inducer", (positions, cells))
@@ -53,15 +63,15 @@ def get_primary_nodes(network_params, tensor_model, l_max, n_max, atomization_co
 
         strain = strain_inducer.strain
         force = physics.StressForceNode("forces", (henergy, strain, positions, cells))
-    else:
+    elif force_weight != 0:
         force = physics.GradientNode("forces", (henergy, positions), sign=-1)
+    else:
+        force = None
 
     return henergy, force, species
 
-# Creates the loss nodes for training from the given henergy, force, and species node.
-# force_percent is a number from 0-1 that states how much force should be weighted in
-# the loss function (set force_percent = 0.0 to not train on forces at all).
-def make_loss(henergy, force, species, force_percent, stress_and_force, mae_only):
+# Creates loss nodes only for targets whose corresponding weights are nonzero.
+def make_loss(henergy, force, species, energy_weight, force_weight, stress_weight, mae_only):
     from hippynn.graphs.nodes.loss import MSELoss, MAELoss, Rsq, Mean
     from hippynn.graphs import physics
 
@@ -77,43 +87,32 @@ def make_loss(henergy, force, species, force_percent, stress_and_force, mae_only
         "T-Hier": Mean.of_node(henergy.hierarchicality),
     }
 
-    if stress_and_force:
+    losses["EnergyTotal"] = losses["T-MAE"] if mae_only else losses["T-RMSE"] + losses["T-MAE"]
+    losses["LossTotal"] = energy_weight * (losses["EnergyTotal"] + losses["T-Hier"])
+
+    if force_weight != 0:
+        force_node = force.forces if stress_weight != 0 else force
         force_losses = {
-            "F-RMSE": MSELoss.of_node(force.forces) ** (1 / 2),
-            "F-MAE": MAELoss.of_node(force.forces),
-            "F-RSQ": Rsq.of_node(force.forces),
-            "S-RMSE" : 1602.17662 * MSELoss.of_node(force.stress) ** (1 / 2),
-            "S-MAE" : 1602.17662 * MAELoss.of_node(force.stress),
-            "S-RSQ" : Rsq.of_node(force.stress),
+            "F-RMSE": MSELoss.of_node(force_node) ** (1 / 2),
+            "F-MAE": MAELoss.of_node(force_node),
+            "F-RSQ": Rsq.of_node(force_node),
         }
-
-    else:
-        force_losses = {
-            "F-RMSE": MSELoss.of_node(force) ** (1 / 2),
-            "F-MAE": MAELoss.of_node(force),
-            "F-RSQ": Rsq.of_node(force),
-        }
-
-    if mae_only:
-        losses["EnergyTotal"] = losses["T-MAE"]
-    else:
-        losses["EnergyTotal"] = losses["T-RMSE"] + losses["T-MAE"]
-    losses["LossTotal"] = losses["EnergyTotal"] + losses["T-Hier"]
-    if force_percent != 0.0:
-
         losses.update(force_losses)
-        if stress_and_force:
-            if mae_only:
-                losses["ForceTotal"] = losses["F-MAE"] + 0.1 * losses["S-MAE"]
-            else:
-                losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"] + 0.1 * (losses["S-RMSE"] + losses["S-MAE"])
-        else:
-            if mae_only:
-                losses["ForceTotal"] = losses["F-MAE"]
-            else:
-                losses["ForceTotal"] = losses["F-RMSE"] + losses["F-MAE"]
+        force_loss = losses["F-MAE"] if mae_only else losses["F-RMSE"] + losses["F-MAE"]
+        losses["ForceTotal"] = force_weight * force_loss
+        losses["LossTotal"] = losses["LossTotal"] + losses["ForceTotal"]
 
-        losses["LossTotal"] = 2*( (1 - force_percent) * losses["LossTotal"] + force_percent * losses["ForceTotal"] )
+    if stress_weight != 0:
+        stress_rmse = MSELoss.of_node(force.stress) ** (1 / 2)
+        stress_mae = MAELoss.of_node(force.stress)
+        losses.update({
+            "S-RMSE": 1602.17662 * stress_rmse,
+            "S-MAE": 1602.17662 * stress_mae,
+            "S-RSQ": Rsq.of_node(force.stress),
+        })
+        stress_loss = stress_mae if mae_only else stress_rmse + stress_mae
+        losses["StressTotal"] = stress_weight * stress_loss
+        losses["LossTotal"] = losses["LossTotal"] + losses["StressTotal"]
 
     return losses
 
@@ -218,18 +217,27 @@ def main(args):
                     atomization_consistent=args.atomization_consistent,
                     db_dir="../" + args.db_dir,
                     db_name=args.db_name,
-                    stress_and_force=args.stress_and_force
+                    force_weight=args.force_weight,
+                    stress_weight=args.stress_weight,
                 )
 
                 henergy.mol_energy.db_name = "T"
 
-                if args.stress_and_force:
+                if args.stress_weight != 0:
                     force.forces.db_name = "F"
                     force.stress.db_name = "S"
-                else:
+                elif args.force_weight != 0:
                     force.db_name = "F"
 
-                validation_losses = make_loss(henergy, force, species, force_percent=args.force_percent, stress_and_force=args.stress_and_force, mae_only=args.mae_only)
+                validation_losses = make_loss(
+                    henergy,
+                    force,
+                    species,
+                    energy_weight=args.energy_weight,
+                    force_weight=args.force_weight,
+                    stress_weight=args.stress_weight,
+                    mae_only=args.mae_only,
+                )
 
                 train_loss = validation_losses["LossTotal"]
 
@@ -334,8 +342,9 @@ if __name__ == "__main__":
     parser.add_argument("--test_size", type=float, default=0.1, help="Percentage of the dataset used for testing (decimal between 0 and 1)")
     parser.add_argument("--valid_size", type=float, default=0.1, help="Percentage of dataset used for validation (decimal between 0 and 1)")
     parser.add_argument("--force_restart", action=BooleanOptionalAction, default=False, help="Restart training from beginning.")
-    parser.add_argument("--force_percent", type=float, default=0.5, help="What percentage of the loss is due to the force.")
-    parser.add_argument("--stress_and_force", action=BooleanOptionalAction, help="Also train stress in addition to force")
+    parser.add_argument("--energy_weight", type=float, default=1.0, help="Weight of the energy loss.")
+    parser.add_argument("--force_weight", type=float, default=0.0, help="Weight of the force loss; zero disables force computation.")
+    parser.add_argument("--stress_weight", type=float, default=0.0, help="Weight of the stress loss; zero disables stress computation.")
     parser.add_argument("--mae_only", action=BooleanOptionalAction, help="Only use MAE in loss, rather than MAE and RMSE")
 
     parser.add_argument("--disable-tensor-message-passing", action=BooleanOptionalAction, help="Disable fused tensor message passing. If omitted, use the hippynn default.")

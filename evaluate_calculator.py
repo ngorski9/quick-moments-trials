@@ -12,14 +12,16 @@ from ase import units
 import torch
 
 # This file evaluates the accuracy of an ASE calculator (either MACE-OFF or ours)
-# on the test data that is from MACE. It compute the RMSE of both energy and force
+# on test data. It computes the RMSE of energy and force, and stress when reference
+# stresses are supplied as (data_prefix)-S.npy.
 # computation on the mace test data, and disaggregates the results based on
 # the molecule type (as is done in the MACE-OFF paper). It also computes the average
 # molecule size per category.
 if __name__ == "__main__":
 
     # populate this with the latest matPES version:
-    matpes_version = "MatPES-PBE-v2025.1"
+    # matpes_version = "MatPES-PBE-v2025.1"
+    matpes_version = "MatPES-PBE-2025.2.10"
 
     if len(sys.argv) == 1:
         # set to an integer to stop evaluation once that many molecules are reached.
@@ -33,7 +35,7 @@ if __name__ == "__main__":
         # Set this equal to the matPES model type (either M3GNet, CHGNet, or TensorNet)
 
         # corresponding to a hippynn calculator that you would like to evaluate.
-        calc_name = "PET-MAD"
+        calc_name = "../our_models/matpes-optimal-maybe_GPU0"
 
         # What file should we store the trial's results to. If the file already exists, it will
         # append the results as another row of the file. Otherwise, it will write the header and data.
@@ -46,7 +48,7 @@ if __name__ == "__main__":
 
         # The categories are identified by a number (in a numpy array)
         # The names of the categories should be stored in (data_prefix)-Category-Names.txt
-        data_prefix = "../data/mace_test_data/mace"
+        data_prefix = "../data/matpes_test_data/matpes"
     else:
 
         parser = argparse.ArgumentParser(prog="HIP-HOP-NN ablation timing with ASE calculator")
@@ -76,6 +78,12 @@ if __name__ == "__main__":
         cells = np.load(f"{data_prefix}-CELL.npy")
     else:
         cells = None
+    if os.path.isfile(f"{data_prefix}-S.npy"):
+        stresses = np.load(f"{data_prefix}-S.npy")
+        if cells is None:
+            raise ValueError("Stress evaluation requires (data_prefix)-CELL.npy.")
+    else:
+        stresses = None
 
     num_categories = np.max(categories)+1
 
@@ -89,8 +97,12 @@ if __name__ == "__main__":
     elif calc_name in ["M3GNet", "CHGNet", "TensorNet"]:
         import matgl
         from matgl.ext.ase import PESCalculator
-        model = matgl.load_model(f"{calc_name}-{matpes_version}-PES")
-        calc = PESCalculator(model)
+        matgl_model_name = f"{calc_name}-PES-{matpes_version}"
+        print(matgl_model_name)
+        model = matgl.load_model(matgl_model_name)
+        # MatGL's default calculator reports stress in GPa. The MatPES -S.npy
+        # files use the ASE convention in eV/Å³, so request that unit explicitly.
+        calc = PESCalculator(model, stress_unit="eV/A3")
     else:
         from hippynn.experiment.serialization import load_model_from_cwd
         from hippynn.interfaces.ase_interface.calculator import calculator_from_model
@@ -109,11 +121,15 @@ if __name__ == "__main__":
     e_ae_peratom = [0] * num_categories
     f_se_peratom = [0] * num_categories
     f_ae_peratom = [0] * num_categories
+    s_se = [0] * num_categories
+    s_ae = [0] * num_categories
     n_mols_eval = [0] * num_categories
     total_e_se_peratom = 0
     total_e_ae_peratom = 0
     total_f_se_peratom = 0
     total_f_ae_peratom = 0
+    total_s_se = 0
+    total_s_ae = 0
     total_n_mols = 0
     total_n_atoms = 0
 
@@ -121,53 +137,65 @@ if __name__ == "__main__":
 
     # iterate through molecules.
     for i in range(num_mols_to_test):
-        print(f"{i+1} / {num_mols_to_test}                      ", end="\r")
-        # pull relevant information
-        gt_energy = energy[i]
-        gt_forces = forces[i]
-        category = categories[i]
+        try:
+            print(f"{i+1} / {num_mols_to_test}                      ", end="\r")
+            # pull relevant information
+            gt_energy = energy[i]
+            gt_forces = forces[i]
+            gt_stress = stresses[i] if stresses is not None else None
+            category = categories[i]
 
-        # Get species and locations in list form in order to create ASE object.
-        species_list = list(species[i])
-        if 0.0 in species_list:
-            num_atoms = species_list.index(0.0)
-        else:
-            num_atoms = len(species_list)
-        species_list = species_list[:num_atoms]
+            # Get species and locations in list form in order to create ASE object.
+            species_list = list(species[i])
+            if 0.0 in species_list:
+                num_atoms = species_list.index(0.0)
+            else:
+                num_atoms = len(species_list)
+            species_list = species_list[:num_atoms]
 
-        location_list = location[i,:num_atoms,:]
+            location_list = location[i,:num_atoms,:]
 
-        # Make ase object and set calculator
-        if cells is not None:
-            atoms = ase.Atoms(species_list, location_list, pbc=[True,True,True], cell=cells[i])
-        else:
-            atoms = ase.Atoms(species_list, location_list)
+            # Make ase object and set calculator
+            if cells is not None:
+                atoms = ase.Atoms(species_list, location_list, pbc=[True,True,True], cell=cells[i])
+            else:
+                atoms = ase.Atoms(species_list, location_list)
 
-        atoms.calc = calc
+            atoms.calc = calc
 
-        # Predict force and energy
-        pred_energy = atoms.get_total_energy()
-        pred_forces = atoms.get_forces()
+            # Predict energy, forces, and (when reference stress is available) stress.
+            pred_energy = atoms.get_total_energy()
+            pred_forces = atoms.get_forces()
+            pred_stress = atoms.get_stress(voigt=False) if gt_stress is not None else None
 
-        # Remove padding from gt_forces
-        gt_forces = gt_forces[:num_atoms,:]
+            # Remove padding from gt_forces
+            gt_forces = gt_forces[:num_atoms,:]
 
-        # Update information to lists.
-        mol_sizes[category] += num_atoms
-        e_se_peratom[category] += ((pred_energy-gt_energy)/num_atoms)**2
-        e_ae_peratom[category] += abs(pred_energy-gt_energy)/num_atoms
-        total_e_se_peratom += ((pred_energy-gt_energy)/num_atoms)**2
-        total_e_ae_peratom += abs(pred_energy-gt_energy)/num_atoms
+            # Update information to lists.
+            mol_sizes[category] += num_atoms
+            e_se_peratom[category] += ((pred_energy-gt_energy)/num_atoms)**2
+            e_ae_peratom[category] += abs(pred_energy-gt_energy)/num_atoms
+            total_e_se_peratom += ((pred_energy-gt_energy)/num_atoms)**2
+            total_e_ae_peratom += abs(pred_energy-gt_energy)/num_atoms
 
-        f_se = np.sum((pred_forces-gt_forces)**2,axis=1)
-        f_se_peratom[category] += np.sum(f_se)/num_atoms**2
-        total_f_se_peratom += np.sum(f_se)/num_atoms**2
-        f_ae_peratom[category] += np.sum(np.sqrt(f_se))/num_atoms
-        total_f_ae_peratom += np.sum(np.sqrt(f_se))/num_atoms
+            f_se = np.sum((pred_forces-gt_forces)**2,axis=1)
+            f_se_peratom[category] += np.sum(f_se)/num_atoms**2
+            total_f_se_peratom += np.sum(f_se)/num_atoms**2
+            f_ae_peratom[category] += np.sum(np.sqrt(f_se))/num_atoms
+            total_f_ae_peratom += np.sum(np.sqrt(f_se))/num_atoms
 
-        total_n_mols += 1
-        total_n_atoms += num_atoms
-        n_mols_eval[category] += 1
+            if gt_stress is not None:
+                stress_error = pred_stress - gt_stress
+                s_se[category] += np.mean(stress_error ** 2)
+                s_ae[category] += np.mean(np.abs(stress_error))
+                total_s_se += np.mean(stress_error ** 2)
+                total_s_ae += np.mean(np.abs(stress_error))
+
+            total_n_mols += 1
+            total_n_atoms += num_atoms
+            n_mols_eval[category] += 1
+        except Exception as e:
+            print(e)
 
     # Load in the category names for evaluation.
     category_names = []
@@ -196,22 +224,35 @@ if __name__ == "__main__":
         f_mae_peratom = f_ae_peratom[i] / n_mols_eval[i]
         f_rmse_peratom = math.sqrt(f_se_peratom[i] / n_mols_eval[i])
 
+        if stresses is not None:
+            s_mae = s_ae[i] / n_mols_eval[i]
+            s_rmse = math.sqrt(s_se[i] / n_mols_eval[i])
+
         print(f"{category_names[i]} ({n_mols_eval[0]} molecules @ {avg_mol_size} atoms (on avg))")
         print(f"E RMSE (eV/atom): {e_rmse_peratom}")
         print(f"E MAE (eV/atom): {e_mae_peratom}")
         print(f"F RMSE (eV/Å): {f_rmse_peratom}")
         print(f"F MAE (eV/Å): {f_mae_peratom}")
+        if stresses is not None:
+            print(f"S RMSE (eV/Å³): {s_rmse} ({s_rmse * 1602.17662} kbar)")
+            print(f"S MAE (eV/Å³): {s_mae} ({s_mae * 1602.17662} kbar)")
 
         file_header.append(f"{category_names[i]} E RMSE (eV/atom)")
         file_header.append(f"{category_names[i]} E MAE (eV/atom)")
         file_header.append(f"{category_names[i]} F RMSE (eV/Å)")
         file_header.append(f"{category_names[i]} F MAE (eV/Å)")
+        if stresses is not None:
+            file_header.append(f"{category_names[i]} S RMSE (eV/Å³)")
+            file_header.append(f"{category_names[i]} S MAE (eV/Å³)")
         file_header.append(f"{category_names[i]} Avg Mol. Size")
 
         file_results.append(e_rmse_peratom)
         file_results.append(e_mae_peratom)
         file_results.append(f_rmse_peratom)
         file_results.append(f_mae_peratom)
+        if stresses is not None:
+            file_results.append(s_rmse)
+            file_results.append(s_mae)
         file_results.append(avg_mol_size)
 
         print()
@@ -221,22 +262,34 @@ if __name__ == "__main__":
     f_mae_peratom = total_f_ae_peratom / total_n_mols
     f_rmse_peratom = math.sqrt(total_f_se_peratom / total_n_mols)
     avg_mol_size = total_n_atoms / total_n_mols
+    if stresses is not None:
+        s_mae = total_s_ae / total_n_mols
+        s_rmse = math.sqrt(total_s_se / total_n_mols)
 
     print(f"Overall E RMSE (eV/atom) : {e_rmse_peratom}")
     print(f"Overall E MAE (eV/atom) : {e_mae_peratom}")
     print(f"Overall F RMSE (eV/Å) : {f_rmse_peratom}")
     print(f"Overall F MAE (eV/Å) : {f_mae_peratom}")
+    if stresses is not None:
+        print(f"Overall S RMSE (eV/Å³) : {s_rmse} ({s_rmse * 1602.17662} kbar)")
+        print(f"Overall S MAE (eV/Å³) : {s_mae} ({s_mae * 1602.17662} kbar)")
 
     file_header.append("Overall E RMSE (eV/atom)")
     file_header.append("Overall E MAE (eV/atom)")
     file_header.append("Overall F RMSE (eV/Å)")
     file_header.append("Overall F MAE (eV/Å)")
+    if stresses is not None:
+        file_header.append("Overall S RMSE (eV/Å³)")
+        file_header.append("Overall S MAE (eV/Å³)")
     file_header.append("Overall Avg Mol. Size")
 
     file_results.append(e_rmse_peratom)
     file_results.append(e_mae_peratom)
     file_results.append(f_rmse_peratom)
     file_results.append(f_mae_peratom)
+    if stresses is not None:
+        file_results.append(s_rmse)
+        file_results.append(s_mae)
     file_results.append(avg_mol_size)
 
     # Write results to file.
@@ -248,3 +301,4 @@ if __name__ == "__main__":
             writer.writerow(file_header)
         writer.writerow(file_results)
         outf.close()    
+
