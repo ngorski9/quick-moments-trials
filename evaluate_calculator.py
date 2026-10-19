@@ -35,7 +35,7 @@ if __name__ == "__main__":
         # Set this equal to the matPES model type (either M3GNet, CHGNet, or TensorNet)
 
         # corresponding to a hippynn calculator that you would like to evaluate.
-        calc_name = "../our_models/matpes-optimal-maybe_GPU0"
+        calc_name = "../our_models/matpes-optimal-maybe-2_GPU0"
 
         # What file should we store the trial's results to. If the file already exists, it will
         # append the results as another row of the file. Otherwise, it will write the header and data.

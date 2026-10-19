@@ -88,7 +88,7 @@ def make_loss(henergy, force, species, energy_weight, force_weight, stress_weigh
     }
 
     losses["EnergyTotal"] = losses["T-MAE"] if mae_only else losses["T-RMSE"] + losses["T-MAE"]
-    losses["LossTotal"] = energy_weight * (losses["EnergyTotal"] + losses["T-Hier"])
+    losses["LossTotal"] = energy_weight * (losses["EnergyTotal"] + 0.01*losses["T-Hier"])
 
     if force_weight != 0:
         force_node = force.forces if stress_weight != 0 else force
